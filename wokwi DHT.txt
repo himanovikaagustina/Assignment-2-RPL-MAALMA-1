@@ -1,0 +1,47 @@
+import machine, dht
+import time, ujson
+
+DEVICE_LABEL = "dht-22"
+UBIDOTS_BROKER = "industrial.api.ubidots.com"
+UBIDOTS_PORT = 1883
+UBIDOTS_USER ="BBUS-9C4y7KrxJ0NIoIWxuCt2Yvx1m5pGKI"
+UBIDOTS_TOPIC =  "/v2.0/devices/"+DEVICE_LABEL 
+
+print("Menyambungkan ke MQTT server... ", end="")
+client = MQTTClient(DEVICE_LABEL, UBIDOTS_BROKER, UBIDOTS_PORT, user=UBIDOTS_USER, password="")
+client.connect()
+print("Tersambung")
+
+# Setup pin GPIO4 untuk DHT22
+dht_pin = machine.Pin(14)
+sensor = dht.DHT22(dht_pin)  # Inisialisasi sensor DHT22
+
+while True:
+    try:
+        # Membaca data dari sensor
+        sensor.measure()  # Mengambil pembacaan sensor
+        temperature = sensor.temperature()  # Membaca suhu dalam Celcius
+        humidity = sensor.humidity()  # Membaca kelembapan
+
+        # Menampilkan hasil pembacaan
+        print('Suhu: {}°C'.format(temperature))
+        print('Kelembapan: {}%'.format(humidity))
+        data = ujson.dumps({
+            "humidity": {
+                "value": humidity,
+                "context": {
+                    "status": "Lembab" if humidity >= 30  else "Tidak Lembab"
+                }
+            },
+            "temp": {
+                "value": temperature,
+                "context": {
+                    "status": "Dingin" if temperature >= 30 else "Panas"
+                }
+            }
+        })
+        client.publish(UBIDOTS_TOPIC, data)
+    except OSError as e:
+        print('Gagal membaca sensor DHT22')
+    time.sleep(2)  # Delay 2 detik sebelum pembacaan berikutnya
+

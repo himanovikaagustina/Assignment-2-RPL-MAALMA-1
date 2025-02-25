@@ -1,0 +1,34 @@
+from machine import Pin
+import time, ujson
+
+DEVICE_LABEL = "pir-motion-sensor"
+UBIDOTS_BROKER = "industrial.api.ubidots.com"
+UBIDOTS_PORT = 1883
+UBIDOTS_USER = "BBUS-8WeUtBiKoW9Zw14jPDwjDQnkwZamKi"
+UBIDOTS_TOPIC = "/v2.0/devices/"+DEVICE_LABEL
+
+print("Menyambungkan ke MQTT server... ", end="")
+client = MQTTClient(DEVICE_LABEL, UBIDOTS_BROKER, UBIDOTS_PORT, user=UBIDOTS_USER, password="")
+client.connect()
+print("Tersambung!")
+
+# Pin definitions
+pirPin = Pin(15, Pin.IN)  # PIR sensor pin (input)
+ledPin = Pin(16, Pin.OUT)  # LED pin (output)
+
+# Main loop
+while True:
+  value = pirPin.value()
+  
+  ledPin.value(value)
+
+  data = ujson.dumps({
+    "gerak": {
+      "value": value,
+      "context": {
+        "status": "Gerak" if value == 1 else "Tidak Gerak"
+      }
+    }
+  })
+  client.publish(UBIDOTS_TOPIC, data)
+  time.sleep(0.5)  # Small delay
